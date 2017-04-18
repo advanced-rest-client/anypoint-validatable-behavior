@@ -1,0 +1,154 @@
+<!--
+@license
+Copyright 2016 The Advanced REST client authors <arc@mulesoft.com>
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+-->
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-validatable-behavior/iron-validatable-behavior.html">
+<!--
+@group Anypoint Elements
+@element anypoint-validatable-behavior
+@demo demo/index.html
+-->
+<script>
+window.Anypoint = window.Anypoint || {};
+/**
+ * Use `Anypoint.AnypointValidatableBehavior` to implement an element that validates user input.
+ * Use the related `Anypoint.AnypointValidatorBehavior` to add custom validation logic to an
+ * iron-input.
+ *
+ * By default, an `<iron-form>` element validates its fields when the user presses the submit
+ * button.
+ * To validate a form imperatively, call the form's `validate()` method, which in turn will
+ * call `validate()` on all its children. By using `Anypoint.AnypointValidatableBehavior`, your
+ * custom element will get a public `validate()`, which
+ * will return the validity of the element, and a corresponding `invalid` attribute,
+ * which can be used for styling.
+ *
+ * To implement the custom validation logic of your element, you must override
+ * the protected `_getValidity()` method of this behaviour, rather than `validate()`.
+ * See [this](https://github.com/PolymerElements/iron-form/blob/master/demo/simple-element.html)
+ * for an example.
+ *
+ * ### Accessibility
+ *
+ * Changing the `invalid` property, either manually or by calling `validate()` will update the
+ * `aria-invalid` attribute.
+ *
+ * @polymerBehavior Anypoint.AnypointValidatableBehavior
+ */
+Anypoint.AnypointValidatableBehaviorImpl = {
+  properties: {
+    /**
+     * Name of the validator or validators to use.
+     * If the element should be validated by more than one validator then separate names with
+     * space. See docs for `Anypoint.AnypointValidatorBehavior` for description of how to define a
+     * validator.
+     */
+    validator: {
+      type: String
+    },
+    /**
+     * After calling `validate()` this will be populated by latest result of the test for each
+     * validator. Result item will contain following properties:
+     *
+     * - validator {String} Name of the validator
+     * - valid {Boolean} Result of the test
+     * - message {String} Error message
+     *
+     * This property is `undefined` if `validator` is not set.
+     */
+    validationStates: {
+      type: Array,
+      readOnly: true,
+      notify: true
+    },
+    /**
+     * Overrides `Polymer.IronValidatableBehavior#_validator`
+     * List of validators to use.
+     */
+    _validator: {
+      type: Array,
+      computed: '__computeValidator(validator)'
+    }
+  },
+
+  // Overrides `Polymer.IronValidatableBehavior#__computeValidator`
+  __computeValidator: function() {
+    if (!Polymer.IronValidatableBehaviorMeta) {
+      return;
+    }
+    var validator = this.validator;
+    if (!validator) {
+      return;
+    }
+    var validatorsNames = validator.split(' ');
+    if (validatorsNames.length === 0) {
+      return;
+    }
+    var result = [];
+    validatorsNames.forEach(function(name) {
+      var validator = Polymer.IronValidatableBehaviorMeta.byKey(name);
+      if (validator) {
+        result.push(validator);
+      }
+    });
+    return result;
+  },
+
+  /**
+   * Overrides `Polymer.IronValidatableBehavior#hasValidator`
+   * @return {boolean} True if the validator `validator` exists.
+   */
+  hasValidator: function() {
+    return !!(this._validator && this._validator.length);
+  },
+
+  /**
+   * Overrides `Polymer.IronValidatableBehavior#hasValidator`
+   *
+   * Returns true if `value` is valid.  By default, it is passed
+   * to the validator's `validate()` function, if a validator is set. You
+   * should override this method if you want to implement custom validity
+   * logic for your element.
+   *
+   * @param {Object} value The value to be validated.
+   * @return {boolean} True if `value` is valid.
+   */
+  _getValidity: function(value) {
+    if (this.hasValidator()) {
+      var result = true;
+      var states = [];
+      this._validator.forEach(function(validator) {
+        var validatorResult = {
+          validator: validator.validatorName,
+          message: validator.message
+        };
+        if (!validator.validate(value)) {
+          result = false;
+          validatorResult.valid = false;
+        } else {
+          validatorResult.valid = true;
+        }
+        states.push(validatorResult);
+      });
+      this._setValidationStates(states);
+      return result;
+    }
+    return true;
+  },
+};
+/** @polymerBehavior */
+Anypoint.AnypointValidatableBehavior = [
+  Polymer.IronValidatableBehavior,
+  Anypoint.AnypointValidatableBehaviorImpl
+];
+</script>
